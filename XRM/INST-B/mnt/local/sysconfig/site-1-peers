@@ -1,0 +1,4 @@
+PEERS=1,2
+KNOBS=clkdiv,trg,event0,rgm,rtm_translen,sync_trg_to_clk,nacc,dna,ACC,DEC
+
+

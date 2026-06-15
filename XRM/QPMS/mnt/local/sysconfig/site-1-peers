@@ -1,0 +1,3 @@
+PEERS=1,2,3,4
+KNOBS=clkdiv,trg,event0,odd_channels,data32,sync_trg_to_clk
+
