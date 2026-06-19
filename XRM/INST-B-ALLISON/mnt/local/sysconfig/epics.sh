@@ -55,3 +55,18 @@ fi
 
 # Disable calibration monitoring sequences in acq400ioc
 # DISABLE_CALMON=1
+
+# scripts/load.dacstep.init to /usr/local/epics/init.d/
+[ ! -e /usr/local/epics/init.d/load.dacstep.init ] && \
+    cp /usr/local/epics/scripts/load.dacstep.init /usr/local/epics/init.d/load.dacstep.init
+
+# DACSTEP
+export DACSTEP_VERBOSE=2
+export ACQ400_DAC_STEP=yes
+export DACSTEP_STEP=500
+export ACQ400_DAC_STEP_SITE=5
+
+# ESSENTIAL! : side effect of Judgement, but should that be disabled, we STILL need matched buffers..
+export RTM_BUFFER_MON=y
+export RTM_BUFFER_MON_VERBOSE=1
+export SIZE=20000
