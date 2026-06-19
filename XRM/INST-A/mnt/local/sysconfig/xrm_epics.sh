@@ -34,9 +34,9 @@ export XRM_MODEL="XRM-INST-A"
 export XRM_FMT_RX=1
 export XRM_SOE=1
 export XRM_PM=0
-export XRM_INST1="STRATEGY=STR;REDIS_HOST=radish;REDIS_PORT=2468;"
+export XRM_INST1="STRATEGY=STR;REDIS_HOST=radish;REDIS_PORT=6379;"
 export IN1STR_cmd=/usr/local/xrm/epics/scripts/inst-str-fake
-export XRM_INST2="STRATEGY=SPY;REDIS_HOST=radish;REDIS_PORT=2468;"
+export XRM_INST2="STRATEGY=SPY;REDIS_HOST=radish;REDIS_PORT=6379;"
 #export IN2SPY_cmd=/usr/local/xrm/epics/scripts/inst-str-fake
 export IN2SPY_cmd=/usr/local/xrm/epics/scripts/inst-spy-fake
 
