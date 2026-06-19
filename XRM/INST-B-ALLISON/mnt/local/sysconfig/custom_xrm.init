@@ -1,0 +1,82 @@
+#!/bin/sh
+
+echo "++ 99-custom_xrm"
+
+while [ ! -e  /var/www/d-tacq/rc-user-complete ]; do
+        sleep 10
+        echo "defer 99-custom_xrm until IOC_READY"
+done
+echo custom_xrm $(cat /var/www/d-tacq/rc-user-complete)
+
+HOSTNAME=$(hostname)
+
+PRESENT428=0
+
+# Site specific initialisation
+
+for site in 1 2 3 4 5 6; do
+    NAME_FILE="/etc/acq400/$site/module_name"
+    TYPE_FILE="/etc/acq400/$site/module_type"
+
+    if [ -f "$NAME_FILE" ] && [ -f "$TYPE_FILE" ]; then
+        MOD_NAME=$(cat "$NAME_FILE")
+        MOD_TYPE=$(cat "$TYPE_FILE")
+
+        echo "Checking Site $site: Found $MOD_NAME (Type: $MOD_TYPE)"
+
+        # Perform actions depending on the module name (or type)
+        case "$MOD_NAME" in
+            "acq423elf")
+                echo "  -> Executing specific setup for acq423elf..."
+                ;;
+
+            "acq428elf")
+                echo "  -> Executing specific setup for acq428elf..."
+                caput ${HOSTNAME}:${site}:ADC_CAL calibrated
+                caput ${HOSTNAME}:${site}:GAIN:ALL 1
+                PRESENT428=1
+                ;;
+
+            "ao420fmc") # acq427 AO-only boards
+                echo "  -> Executing specific setup for ao420fmc..."
+                set.site $site clk 1,1,1
+                set.site $site trg 1,1,1
+                set.site $site CLKDIV 40
+                caput ${HOSTNAME}:${site}:AO:GAIN:CH:ALL x2
+                caput ${HOSTNAME}:${site}:AO:REF 5.0V
+                ;;
+
+            "dio482elf_xrm")
+                echo "  -> Executing setup for dio482elf_xrm..."
+                set.site $site clk 1,2,1
+                set.site $site trg 1,2,1
+                # if it has a 428 CLKDIV is 2 not 1
+                if [ "$PRESENT428" -eq 1 ]; then
+                    set.site $site CLKDIV 2
+                else
+                    set.site $site CLKDIV 1
+                fi
+                ;;
+
+            *)
+                echo "  -> Unrecognized module: $MOD_NAME"
+                ;;
+        esac
+    else
+        echo "Checking Site $site: No module installed."
+    fi
+done
+
+
+## SPADCOP WR_TAI_CURR_L - Include seconds since epcoch in SPAD
+#                   enable,site,register,sample_us
+# 0x208 is WR_TAI_CURR_L
+set.site 0 spadcop3 1,2,0x208,1000
+
+## uSec counter - Trigger the uSec counter at the same instant as Site 1
+#s1_clk_setting=$(get.site 1 clk|cut -c 5-9)
+s1_trg_setting=$(get.site 1 trg|cut -c 5-9)
+set.site 0 spad1_us $s1_trg_setting
+
+## SPAD_ID - Identity patterns in unused SPAD words
+/usr/local/CARE/make_spad_id
