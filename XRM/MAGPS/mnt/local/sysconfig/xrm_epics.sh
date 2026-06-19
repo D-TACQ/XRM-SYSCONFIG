@@ -1,4 +1,6 @@
- 1>&2 xrm_epics.sh
+#!/bin/sh
+
+echo 1>&2 xrm_epics.sh
 #export IOC_HOST=xrmmagps_123
 export IOC_HOST=acq2206_596
 export ACQ400IOC=acq2206_096
