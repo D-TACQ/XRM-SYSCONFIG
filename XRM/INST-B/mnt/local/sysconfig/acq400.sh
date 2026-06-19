@@ -1,4 +1,4 @@
-# external reboot control 
+# external reboot control
 REBOOT_KNOB=y
 #
 FANSPEED=100
@@ -43,6 +43,24 @@ FANSPEED=100
 # for rapid update with normal streaming, not burst
 # Rapid update, no trigger, No Judgment:
 #ACQ400_JUDGEMENT_NJ="1024"
+
+# Box specific initialization
+echo "XRM specific flavor initialization"
+XRM_MODEL=$(grep ^export /mnt/local/sysconfig/xrm_epics.sh | grep MODEL | sed 's/.*="//;s/"//')
+echo "Detected XRM flavor : $XRM_MODEL"
+
+APPLIANCE_TYPE=$XRM_MODEL
+if [ "$APPLIANCE_TYPE" == "XRM-MagPS" ]; then
+	XRM_JUDGEMENT="4096 d0"
+elif [ "$APPLIANCE_TYPE" == "XRM-QPMS" ]; then
+	XRM_JUDGEMENT="4096 d0"
+elif [ "$APPLIANCE_TYPE" == "XRM-INST-A" ]; then
+	XRM_JUDGEMENT="16384 d0"
+elif [ "$APPLIANCE_TYPE" == "XRM-INST-B" ]; then
+	XRM_JUDGEMENT="16384 d0"
+else
+	echo "No XRM detected"
+fi
 
 
 BLEN=4194304

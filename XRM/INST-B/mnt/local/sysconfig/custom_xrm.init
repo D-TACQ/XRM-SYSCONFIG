@@ -29,7 +29,7 @@ for site in 1 2 3 4 5 6; do
             "acq423elf")
                 echo "  -> Executing specific setup for acq423elf..."
                 ;;
-                
+
             "acq428elf")
                 echo "  -> Executing specific setup for acq428elf..."
                 caput ${HOSTNAME}:${site}:ADC_CAL calibrated
@@ -45,7 +45,7 @@ for site in 1 2 3 4 5 6; do
                 caput ${HOSTNAME}:${site}:AO:GAIN:CH:ALL x2
                 caput ${HOSTNAME}:${site}:AO:REF 5.0V
                 ;;
-                
+
             "dio482elf_xrm")
                 echo "  -> Executing setup for dio482elf_xrm..."
                 set.site $site clk 1,2,1
@@ -57,42 +57,16 @@ for site in 1 2 3 4 5 6; do
                     set.site $site CLKDIV 1
                 fi
                 ;;
-                
+
             *)
                 echo "  -> Unrecognized module: $MOD_NAME"
                 ;;
-        esac 
+        esac
     else
         echo "Checking Site $site: No module installed."
     fi
 done
 
-# Box specific initialization
-echo "XRM specific flavor initialization"
-XRM_MODEL=$(grep ^export /mnt/local/sysconfig/xrm_epics.sh | grep MODEL | sed 's/.*="//;s/"//')
-echo "Detected XRM flavor : $XRM_MODEL"
-
-APPLIANCE_TYPE=$XRM_MODEL
-if [ "$APPLIANCE_TYPE" == "XRM-MagPS" ]; then
-	run0_sites="1,5,6"
-	spad_setting=1,14,0
-	XRM_JUDGEMENT="4096 d0"
-elif [ "$APPLIANCE_TYPE" == "XRM-QPMS" ]; then
-	run0_sites="1,2,3,4"
-	spad_setting=1,16,0
-	XRM_JUDGEMENT="4096 d0"
-elif [ "$APPLIANCE_TYPE" == "XRM-INST-A" ]; then
-	run0_sites="1,2"
-	spad_setting=1,16,0
-	XRM_JUDGEMENT="16384 d0"
-elif [ "$APPLIANCE_TYPE" == "XRM-INST-B" ]; then
-	run0_sites="1,2,5"
-	spad_setting=1,15,0
-	XRM_JUDGEMENT="16384 d0"
-else
-	echo "No XRM detected"
-	spad=0,0,0
-fi
 
 ## SPADCOP WR_TAI_CURR_L - Include seconds since epcoch in SPAD
 #                   enable,site,register,sample_us
@@ -106,24 +80,3 @@ set.site 0 spad1_us $s1_trg_setting
 
 ## SPAD_ID - Identity patterns in unused SPAD words
 /usr/local/CARE/make_spad_id
-
-## run0 configuration, including SPAD configuration
-run0 $run0_sites $spad_setting
-
-## Judgement setup
-judgement() {
-# short trace length, rapid update 50Hz possible
-set.site 1 RTM_TRANSLEN ${1:-128}
-set.site 1 RGM RTM
-set.site 1 RGM:DX ${2:-d0}
-set.site 1 RGM:SENSE rising
-}
-# see /mnt/local/sysconfig/epics.sh
-# Maintiain the ability to override default in acq400.sh
-source /mnt/local/sysconfig/acq400.sh
-
-if [ ! -z "$ACQ400_JUDGEMENT" ]; then
-	judgement $ACQ400_JUDGEMENT
-else
-	judgement $XRM_JUDGEMENT
-fi
