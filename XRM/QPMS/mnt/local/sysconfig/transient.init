@@ -9,8 +9,31 @@ transient PRE=2000 POST=2000 OSAM=1 DEMUX=1 SOFT_TRIGGER=1
 # configure soft trigger on site 1 - typical default
 set.site 1 trg=1,1,1
 
-# set sites in aggregator set
-run0 1,2,3,4
+# Box specific initialization
+echo "XRM specific flavor initialization"
+XRM_MODEL=$(grep ^export /mnt/local/sysconfig/xrm_epics.sh | grep MODEL | sed 's/.*="//;s/"//')
+echo "Detected XRM flavor : $XRM_MODEL"
+
+APPLIANCE_TYPE=$XRM_MODEL
+if [ "$APPLIANCE_TYPE" == "XRM-MagPS" ]; then
+	run0_sites="1,5,6"
+	spad_setting=1,14,0
+elif [ "$APPLIANCE_TYPE" == "XRM-QPMS" ]; then
+	run0_sites="1,2,3,4"
+	spad_setting=1,16,0
+elif [ "$APPLIANCE_TYPE" == "XRM-INST-A" ]; then
+	run0_sites="1,2"
+	spad_setting=1,16,0
+elif [ "$APPLIANCE_TYPE" == "XRM-INST-B" ]; then
+	run0_sites="1,2,5"
+	spad_setting=1,15,0
+else
+	echo "No XRM detected"
+	spad=0,0,0
+fi
+
+## run0 configuration, including SPAD configuration
+run0 $run0_sites $spad_setting
 
 # configure transient channel data server at ports 53000+CH
 make-ch-server

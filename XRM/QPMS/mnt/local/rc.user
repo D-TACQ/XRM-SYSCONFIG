@@ -13,6 +13,18 @@ set.site 0 sync_role master 200000
 
 # For other combinations try 'set.site 0 sync_role help'
 
+## Judgement setup
+judgement() {
+# short trace length, rapid update 50Hz possible
+set.site 1 RTM_TRANSLEN ${1:-128}
+set.site 1 RGM RTM
+set.site 1 RGM:DX ${2:-d0}
+set.site 1 RGM:SENSE rising
+}
+source /mnt/local/sysconfig/acq400.sh
+[ ! -z "$ACQ400_JUDGEMENT" ] && judgement $ACQ400_JUDGEMENT
+
+
 # CYCLE TRIGGER direct from front panel                                                                
 caput $(hostname):0:SIG:SRC:TRG:0 EXT
 # Burst mode: no LIVE PRE                                                  
