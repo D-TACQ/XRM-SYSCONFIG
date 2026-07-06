@@ -29,6 +29,8 @@ source /mnt/local/sysconfig/acq400.sh
 caput $(hostname):0:SIG:SRC:TRG:0 EXT
 # Burst mode: no LIVE PRE                                                  
 caput $(hostname):LIVE:PREPCT 0 
+# Limit live WF update rate
+caput $(hostname):JDG:MON_RL 1
 
 # enable port 4210 stream
 echo STREAM_OPTS= >> /etc/sysconfig/acq400_streamd.conf
