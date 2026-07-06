@@ -97,11 +97,11 @@ UUT_TARGET="${HOSTNAME_ARG}"
 if [ "$DRY_RUN" = true ]; then
     echo "========================================="
     echo "   DRY RUN: Skipping final scp deployment "
-    echo "   Would have run: scp -r ${STAGE_DIR}/mnt root@${UUT_TARGET}:/mnt/"
+    echo "   Would have run: scp -r ${STAGE_DIR}/mnt/local root@${UUT_TARGET}:/mnt/"
     echo "========================================="
 else
     echo "Deploying configuration to UUT (${HOSTNAME_ARG})..."
-    scp -r "${STAGE_DIR}/mnt" "root@${UUT_TARGET}:/mnt/"
+    scp -r "${STAGE_DIR}/mnt/local" "root@${UUT_TARGET}:/mnt/"
 fi
 
 echo "Done!"
