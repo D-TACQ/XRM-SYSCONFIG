@@ -1,9 +1,9 @@
 #!/bin/sh
 
 echo 1>&2 xrm_epics.sh
-#export IOC_HOST=xrmmagps_123
-export IOC_HOST=acq2206_595
-export ACQ400IOC=acq2206_095
+export ACQ400IOC=ACQ400IOCnum
+# XRM IOC HOST - eg. ACQ400IOC + 500
+export IOC_HOST=XRMIOCnum
 # connects to custom NIC on eigg
 #ifconfig eth0:0 192.168.1.88 up
 # pick an unused address that's visible on Peter's vpn
