@@ -27,6 +27,10 @@ elif [ "$APPLIANCE_TYPE" == "XRM-INST-A" ]; then
 elif [ "$APPLIANCE_TYPE" == "XRM-INST-B" ]; then
 	run0_sites="1,2,5"
 	spad_setting=1,15,0
+elif [ "$APPLIANCE_TYPE" == "XRM-ALLISON" ]; then
+	run0_sites="1"
+	spad_setting=1,8,0
+	# used to be spad_setting 1,2,0 but adding extra so SSB is a power of 2
 else
 	echo "No XRM detected"
 	spad=0,0,0
@@ -34,6 +38,11 @@ fi
 
 ## run0 configuration, including SPAD configuration
 run0 $run0_sites $spad_setting
+
+if [ "$APPLIANCE_TYPE" == "XRM-ALLISON" ]; then
+	/usr/local/CARE/make_spad_id
+	set.site 0 spad1_us 1,0,1
+fi
 
 set.site 3 trg 1,1,1
 play0 3

@@ -30,9 +30,22 @@ caput $(hostname):0:SIG:SRC:TRG:0 EXT
 # Burst mode: no LIVE PRE
 caput $(hostname):LIVE:PREPCT 0
 
+caput $(hostname):5:AO:REF 5.0V
+caput $(hostname):5:AO:GAIN:CH:ALL x2
+
 # enable port 4210 stream
 echo STREAM_OPTS= >> /etc/sysconfig/acq400_streamd.conf
 
 # Tune WR clock phase
 set.site 11 si5326_tune_phase 1
+
+# in case JUDGEMENT is not set
+set.site 1 RGM RTM
+set.site 1 RGM:SENSE rising
+set.site 1 RTM_TRANSLEN 20000
+
+# for Allison:
+pvput acq2206_087:0:STREAM_SUBSET_MASK 1,2,5,6,17,18,19,20
+
+
 

@@ -58,10 +58,13 @@ elif [ "$APPLIANCE_TYPE" == "XRM-INST-A" ]; then
 	XRM_JUDGEMENT="16384 d0"
 elif [ "$APPLIANCE_TYPE" == "XRM-INST-B" ]; then
 	XRM_JUDGEMENT="16384 d0"
+elif [ "$APPLIANCE_TYPE" == "XRM-ALLISON" ]; then
+	#XRM_JUDGEMENT="20000 d0"
+	echo "no Judgement on Allison, stops RT from working"
 else
 	echo "No XRM detected"
 fi
 
 
 BLEN=4194304
-NBUF=128
+NBUF=40

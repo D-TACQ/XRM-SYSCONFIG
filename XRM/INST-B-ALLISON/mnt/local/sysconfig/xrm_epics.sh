@@ -2,8 +2,8 @@
 
 echo 1>&2 xrm_epics.sh
 #export IOC_HOST=xrmmagps_123
-export IOC_HOST=acq2206_599
-export ACQ400IOC=acq2206_099
+export IOC_HOST=acq2206_587
+export ACQ400IOC=acq2206_087
 # connects to custom NIC on eigg
 #ifconfig eth0:0 192.168.1.88 up
 # pick an unused address that's visible on Peter's vpn
@@ -23,9 +23,10 @@ export EPICS_CA_ADDR_LIST="$ETH0_IP $ETH00_IP"
 export EPICS_PVA_ADDR_LIST="$ETH0_IP $ETH00_IP"
 
 #export XRM_MODEL="XRM-INST-A"
-export XRM_MODEL="XRM-INST-B"
+#export XRM_MODEL="XRM-INST-B"
 #export XRM_MODEL="XRM-MagPS"
 #export XRM_MODEL="XRM-QPMS"
+export XRM_MODEL="XRM-ALLISON"
 
 #deduce_xrm_part() {
 #	echo @@todo_xrm_part_auto-deduction
@@ -36,10 +37,10 @@ export XRM_MODEL="XRM-INST-B"
 export XRM_FMT_RX=1
 export XRM_SOE=1
 export XRM_PM=0
-export XRM_INST1="STRATEGY=STR;REDIS_HOST=radish;REDIS_PORT=6379;"
+#export XRM_INST1="STRATEGY=STR;REDIS_HOST=staffa;REDIS_PORT=6379;ACQ_PORT=4210"
+export XRM_INST1="STRATEGY=STR;REDIS_HOST=staffa;REDIS_PORT=6379;CHUNK_SIZE=320512"
 export IN1STR_cmd=/usr/local/bin/redis-acq400
-export XRM_INST2="STRATEGY=SPY;REDIS_HOST=radish;REDIS_PORT=6379;"
-#export IN2SPY_cmd=/usr/local/bin/redis-acq400
+export XRM_INST2="STRATEGY=SPY;REDIS_HOST=staffa;REDIS_PORT=6379;CHUNK_SIZE=320512"
 export IN2SPY_cmd=/usr/local/bin/redis-acq400
 
 export MultiCastVerbose=1
