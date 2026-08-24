@@ -91,6 +91,11 @@ echo "  XRMIOCnum    -> $NEW_VAR"
 sed -i -E "s/([a-zA-Z0-9]+_)?ACQ400IOCnum/${HOSTNAME_ARG}/g" "$TARGET_FILE"
 sed -i -E "s/([a-zA-Z0-9]+_)?XRMIOCnum/${NEW_VAR}/g" "$TARGET_FILE"
 
+incant="$0 $*"
+githash=$(git rev-parse HEAD)
+user="${USER}@$(hostname)"	
+sed -i -e "2i#\n# created by deploy_XRM for uut:$uut xrm_var:$SOURCE_DIR\n# by ${user} on $(date)\n# git $githash\n# incant $incant\n" $STAGE_DIR/mnt/local/rc.user
+
 # 9. Copy /mnt/local to UUT (Omitted if DRYRUN=1)
 UUT_TARGET="${HOSTNAME_ARG}"
 

@@ -44,4 +44,24 @@ FANSPEED=100
 # Rapid update, no trigger, No Judgment:
 #ACQ400_JUDGEMENT_NJ="1024"
 
+# Box specific initialization
+echo "XRM specific flavor initialization"
+XRM_MODEL=$(grep ^export /mnt/local/sysconfig/xrm_epics.sh | grep MODEL | sed 's/.*="//;s/"//')
+echo "Detected XRM flavor : $XRM_MODEL"
 
+APPLIANCE_TYPE=$XRM_MODEL
+if [ "$APPLIANCE_TYPE" == "XRM-MagPS" ]; then
+	ACQ400_JUDGEMENT="4096 d0"
+elif [ "$APPLIANCE_TYPE" == "XRM-QPMS" ]; then
+	ACQ400_JUDGEMENT="4096 d0"
+elif [ "$APPLIANCE_TYPE" == "XRM-INST-A" ]; then
+	ACQ400_JUDGEMENT="16384 d0"
+elif [ "$APPLIANCE_TYPE" == "XRM-INST-B" ]; then
+	ACQ400_JUDGEMENT="16384 d0"
+else
+	echo "No XRM detected"
+fi
+
+
+BLEN=4194304
+NBUF=128
