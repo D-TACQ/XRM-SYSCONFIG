@@ -40,6 +40,7 @@ esac
 # 3. Define your base paths
 BASE_SOURCE_PATH="XRM"
 STAGE_DIR="XRM/XRM_STAGING"
+PACKAGES_DIR="${BASE_SOURCE_PATH}/packages"
 
 # Dynamically construct paths
 SOURCE_DIR="${BASE_SOURCE_PATH}/${SOURCE_SUBFOLDER}"
@@ -83,6 +84,11 @@ fi
 echo "Copying from ${SOURCE_DIR} to ${STAGE_DIR}..."
 cp -rp "$SOURCE_DIR/mnt" "$STAGE_DIR"
 
+if [ -d "$PACKAGES_DIR" ]; then
+    echo "Copying packages from ${PACKAGES_DIR} to ${STAGE_DIR}/mnt/..."
+    cp -rp "$PACKAGES_DIR" "${STAGE_DIR}/mnt/"
+fi
+
 # 8. Replace placeholders (Always runs)
 echo "Replacing variables..."
 echo "  ACQ400IOCnum -> $HOSTNAME_ARG"
@@ -103,10 +109,17 @@ if [ "$DRY_RUN" = true ]; then
     echo "========================================="
     echo "   DRY RUN: Skipping final scp deployment "
     echo "   Would have run: scp -r ${STAGE_DIR}/mnt/local root@${UUT_TARGET}:/mnt/"
+    if [ -d "${STAGE_DIR}/mnt/packages" ]; then
+        echo "   Would have run: scp -r ${STAGE_DIR}/mnt/packages root@${UUT_TARGET}:/mnt/"
+    fi
     echo "========================================="
 else
     echo "Deploying configuration to UUT (${HOSTNAME_ARG})..."
     scp -r "${STAGE_DIR}/mnt/local" "root@${UUT_TARGET}:/mnt/"
+    if [ -d "${STAGE_DIR}/mnt/packages" ]; then
+        echo "Deploying packages to UUT (${HOSTNAME_ARG})..."
+        scp -r "${STAGE_DIR}/mnt/packages" "root@${UUT_TARGET}:/mnt/"
+    fi
 fi
 
 echo "Done!"
