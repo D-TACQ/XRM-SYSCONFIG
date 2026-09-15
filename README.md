@@ -1,6 +1,6 @@
 # XRM Deployment Documentation
 
-This document describes the XRM (Extensible Radio Module) configuration architecture, the single-template structure (`XRM-BASE`), and the deployment script `deploy_XRM.sh`.
+This document describes the XRM configuration architecture, the single-template structure (`XRM-BASE`), and the deployment script `deploy_XRM.sh`.
 
 ---
 

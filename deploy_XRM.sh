@@ -76,12 +76,12 @@ esac
 SAMPLE_RATE="${SR:-$DEFAULT_SR}"
 
 # 3. Define your base paths
-BASE_SOURCE_PATH="XRM"
-STAGE_DIR="XRM/XRM_STAGING"
-PACKAGES_DIR="${BASE_SOURCE_PATH}/packages"
+BASE_SOURCE_PATH="."
+STAGE_DIR="XRM_STAGING"
+PACKAGES_DIR="packages"
 
 # Source template is consolidated in XRM-BASE
-SOURCE_DIR="${BASE_SOURCE_PATH}/XRM-BASE"
+SOURCE_DIR="XRM-BASE"
 TARGET_FILE="${STAGE_DIR}/mnt/local/sysconfig/xrm_epics.sh"
 
 # 4. Validate that the base template directory exists
