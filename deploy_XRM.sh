@@ -17,7 +17,7 @@ fi
 # 2. Check if exactly two arguments are provided
 if [ "$#" -ne 2 ]; then
     echo "Error: Wrong number of arguments."
-    echo "Usage: [DRYRUN=1] [ARCHIVE=1] $0 <hostname_string> <source_subfolder_name>"
+    echo "Usage: [DRYRUN=1] [ARCHIVE=1] [SR=<sample_rate>] $0 <hostname_string> <source_subfolder_name>"
     exit 1
 fi
 
@@ -31,21 +31,25 @@ case "$SOURCE_SUBFOLDER" in
         MODEL_STR="XRM-INST-A"
         PEERS="1,2"
         XRM_PM=0
+        DEFAULT_SR=4000000
         ;;
     INST-B)
         MODEL_STR="XRM-INST-B"
         PEERS="1,2"
         XRM_PM=0
+        DEFAULT_SR=4000000
         ;;
     MAGPS)
         MODEL_STR="XRM-MagPS"
         PEERS="1"
         XRM_PM=1
+        DEFAULT_SR=100000
         ;;
     QPMS)
         MODEL_STR="XRM-QPMS"
         PEERS="1,2,3,4"
         XRM_PM=1
+        DEFAULT_SR=100000
         ;;
     *)
         echo "Error: Invalid flavour '$SOURCE_SUBFOLDER'."
@@ -57,6 +61,8 @@ case "$SOURCE_SUBFOLDER" in
         exit 1
         ;;
 esac
+
+SAMPLE_RATE="${SR:-$DEFAULT_SR}"
 
 # 3. Define your base paths
 BASE_SOURCE_PATH="XRM"
@@ -75,7 +81,7 @@ fi
 
 # 5. Handle STAGE_DIR cleanup/creation
 if [ -d "$STAGE_DIR" ]; then
-    rm -r "$STAGE_DIR"
+    rm -rf "$STAGE_DIR"
 fi
 mkdir -p "$STAGE_DIR"
 
@@ -96,11 +102,11 @@ fi
 
 # 7. Execute copy (Always runs)
 echo "Copying from ${SOURCE_DIR} to ${STAGE_DIR}..."
-cp -rp "$SOURCE_DIR/mnt" "$STAGE_DIR"
+cp -r "$SOURCE_DIR/mnt" "$STAGE_DIR"
 
 if [ -d "$PACKAGES_DIR" ]; then
     echo "Copying packages from ${PACKAGES_DIR} to ${STAGE_DIR}/mnt/..."
-    cp -rp "$PACKAGES_DIR" "${STAGE_DIR}/mnt/"
+    cp -r "$PACKAGES_DIR" "${STAGE_DIR}/mnt/"
 fi
 
 # 8. Replace placeholders and configure model flavor
@@ -108,6 +114,7 @@ echo "Configuring parameters for ${SOURCE_SUBFOLDER}..."
 echo "  ACQ400IOCnum -> $HOSTNAME_ARG"
 echo "  XRMIOCnum    -> $NEW_VAR"
 echo "  XRM_MODEL    -> $MODEL_STR"
+echo "  Sample Rate  -> $SAMPLE_RATE"
 
 sed -i -E "s/([a-zA-Z0-9]+_)?ACQ400IOCnum/${HOSTNAME_ARG}/g" "$TARGET_FILE"
 sed -i -E "s/([a-zA-Z0-9]+_)?XRMIOCnum/${NEW_VAR}/g" "$TARGET_FILE"
@@ -115,6 +122,7 @@ sed -i -E "s/^#?export XRM_MODEL=\"${MODEL_STR}\"/export XRM_MODEL=\"${MODEL_STR
 sed -i -E "s/^export XRM_PM=.*/export XRM_PM=${XRM_PM}/g" "$TARGET_FILE"
 
 sed -i -E "s/^PEERS=.*/PEERS=${PEERS}/" "$STAGE_DIR/mnt/local/sysconfig/site-1-peers"
+sed -i -E "s/%SR%/${SAMPLE_RATE}/g" "$STAGE_DIR/mnt/local/rc.user"
 
 incant="$0 $*"
 uut="${HOSTNAME_ARG}"

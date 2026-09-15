@@ -1,18 +1,9 @@
+
 /usr/local/CARE/acq2206\+acq42x.init
-
-XRM_MODEL=$(grep ^export /mnt/local/sysconfig/xrm_epics.sh | grep MODEL | sed 's/.*="//;s/"//')
-case "$XRM_MODEL" in
-    XRM-MagPS)  SR=100000 ;;
-    XRM-QPMS)   SR=100000 ;;
-    XRM-INST-A) SR=4000000 ;;
-    XRM-INST-B) SR=4000000 ;;
-    *)          SR=1000000 ;;
-esac
-
 # Local clock and soft trigger
-set.site 0 sync_role master $SR
+set.site 0 sync_role master %SR%
 # Alternate front panel clock and front panel trigger
-#set.site 0 sync_role fpmaster $SR 1000000
+#set.site 0 sync_role fpmaster %SR% 1000000
 
 # For other combinations try 'set.site 0 sync_role help'
 
