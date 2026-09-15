@@ -23,7 +23,12 @@ fi
 # 2. Check if exactly two arguments are provided
 if [ "$#" -ne 2 ]; then
     echo "Error: Wrong number of arguments."
-    echo "Usage: [DRYRUN=1] [ARCHIVE=1] [CLEAN=1] [SR=<sample_rate>] $0 <hostname_string> <source_subfolder_name>"
+    echo "Usage: [DRYRUN=1] [ARCHIVE=1] [CLEAN=1] [SR=<sample_rate>] $0 <hostname_string> <xrm_sysconfig_variant>"
+    echo "Allowed xrm_sysconfig_variant options:"
+    echo "  - INST-A"
+    echo "  - INST-B"
+    echo "  - MAGPS"
+    echo "  - QPMS"
     exit 1
 fi
 
