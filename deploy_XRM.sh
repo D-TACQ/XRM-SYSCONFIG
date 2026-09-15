@@ -14,6 +14,12 @@ else
     USE_ARCHIVE=false
 fi
 
+if [ "${CLEAN}" = "1" ]; then
+    CLEAN_BOX=true
+else
+    CLEAN_BOX=false
+fi
+
 # 2. Check if exactly two arguments are provided
 if [ "$#" -ne 2 ]; then
     echo "Error: Wrong number of arguments."
@@ -133,6 +139,27 @@ sed -i -e "2i#\n# created by deploy_XRM for uut:$uut xrm_var:$SOURCE_SUBFOLDER\n
 # 9. Deploy to UUT (Omitted if DRYRUN=1)
 UUT_TARGET="${HOSTNAME_ARG}"
 ARCHIVE_NAME="${HOSTNAME_ARG}_payload.tgz"
+
+if [ "$CLEAN_BOX" = true ]; then
+    echo "======================================================================"
+    echo " WARNING: CLEAN=1 is enabled!"
+    echo " This will delete the contents of /mnt/local (retaining /cal)"
+    echo " and remove any packages containing *xrm* from /mnt/packages on:"
+    echo " Target UUT: ${UUT_TARGET}"
+    echo "======================================================================"
+    if [ "$DRY_RUN" = true ]; then
+        echo " [DRY RUN] Would have executed countdown and remote cleanup."
+    else
+        echo " Starting cleanup in 5 seconds... Press Ctrl+C to abort!"
+        for i in 5 4 3 2 1; do
+            echo -n "$i... "
+            sleep 1
+        done
+        echo "0"
+        echo "Executing remote cleanup on ${UUT_TARGET}..."
+        ssh root@${UUT_TARGET} "find /mnt/local -mindepth 1 ! -path '/mnt/local/cal' ! -path '/mnt/local/cal/*' -exec rm -rf {} + 2>/dev/null || true; rm -f /mnt/packages/*xrm* 2>/dev/null || true"
+    fi
+fi
 
 if [ "$USE_ARCHIVE" = true ]; then
     echo "Creating compressed archive '${ARCHIVE_NAME}'..."

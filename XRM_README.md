@@ -28,7 +28,7 @@ Key responsibilities:
 
 ### Syntax
 ```bash
-[DRYRUN=1] [ARCHIVE=1] ./deploy_XRM.sh <hostname_string> <flavour_name>
+[DRYRUN=1] [ARCHIVE=1] [CLEAN=1] ./deploy_XRM.sh <hostname_string> <flavour_name>
 ```
 
 ### Arguments
@@ -42,6 +42,7 @@ Key responsibilities:
 ### Environment Variables
 * `DRYRUN=1`: When set, completes all staging, archive generation, regex substitutions, and audit logging locally in `XRM/XRM_STAGING`, but skips SSH/SCP file transfers to the UUT.
 * `ARCHIVE=1`: When set, packages the staged payload into `<hostname>_payload.tgz`, copies it via a single `scp` transfer to `/tmp/` on the UUT, and decompresses it into `/mnt` using `ssh`. Ideal for environments without SSH keys or for mass deployment.
+* `CLEAN=1`: When set, reaches out to the target UUT right at the start of deployment, displays a warning with a 5-second countdown, and deletes the contents of `/mnt/local` (retaining the `/cal` directory) as well as any packages containing `*xrm*` from `/mnt/packages`.
 
 ### Usage Examples
 
