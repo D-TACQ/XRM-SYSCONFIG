@@ -28,7 +28,7 @@ Key responsibilities:
 
 ### Syntax
 ```bash
-[DRYRUN=1] [ARCHIVE=1] [CLEAN=1] ./deploy_XRM.sh <hostname_string> <flavour_name>
+[DRYRUN=1] [ARCHIVE=1] [CLEAN=1] [SR=<sample_rate>] ./deploy_XRM.sh <hostname_string> <flavour_name> [ip_address]
 ```
 
 ### Arguments
@@ -38,11 +38,13 @@ Key responsibilities:
   * `INST-B`
   * `MAGPS`
   * `QPMS`
+* `[ip_address]`: (Optional) Target UUT IP address for network deployment when DNS resolution is unavailable. When omitted, deployment defaults to `<hostname_string>`.
 
 ### Environment Variables
 * `DRYRUN=1`: When set, completes all staging, archive generation, regex substitutions, and audit logging locally in `XRM/XRM_STAGING`, but skips SSH/SCP file transfers to the UUT.
 * `ARCHIVE=1`: When set, packages the staged payload into `<hostname>_payload.tgz`, copies it via a single `scp` transfer to `/tmp/` on the UUT, and decompresses it into `/mnt` using `ssh`. Ideal for environments without SSH keys or for mass deployment.
 * `CLEAN=1`: When set, reaches out to the target UUT right at the start of deployment, displays a warning with a 5-second countdown, and deletes the contents of `/mnt/local` (retaining the `/cal` directory) as well as any packages containing `*xrm*` from `/mnt/packages`.
+* `SR=<sample_rate>`: (Optional) Override default sample rate for the selected flavour.
 
 ### Usage Examples
 
@@ -56,6 +58,11 @@ DRYRUN=1 ./deploy_XRM.sh acq2206_100 MAGPS
 DRYRUN=1 ARCHIVE=1 ./deploy_XRM.sh acq2206_100 QPMS
 ```
 
+**Dry Run Verification with explicit IP address (No DNS):**
+```bash
+DRYRUN=1 ./deploy_XRM.sh acq2206_100 MAGPS 192.168.0.100
+```
+
 **Live Deployment (Standard mode):**
 ```bash
 ./deploy_XRM.sh acq2206_100 MAGPS
@@ -66,13 +73,18 @@ DRYRUN=1 ARCHIVE=1 ./deploy_XRM.sh acq2206_100 QPMS
 ARCHIVE=1 ./deploy_XRM.sh acq2206_100 QPMS
 ```
 
+**Live Deployment with explicit IP address (No DNS):**
+```bash
+./deploy_XRM.sh acq2206_100 MAGPS 192.168.0.100
+```
+
 ---
 
 ## 3. Step-by-Step Function of `deploy_XRM.sh`
 
 ```
   +--------------------------------+
-  | 1. Argument & Option Parsing   | Validate argument count (2 required), DRYRUN, and ARCHIVE flags
+  | 1. Argument & Option Parsing   | Validate arguments (UUT, flavour, optional IP), DRYRUN, CLEAN, ARCHIVE flags
   +---------------+----------------+
                   |
   +---------------v----------------+
@@ -106,8 +118,8 @@ ARCHIVE=1 ./deploy_XRM.sh acq2206_100 QPMS
 
 ### Detailed Functional Breakdown
 
-1. **Environment Flag Evaluation**:
-   Evaluates `${DRYRUN}` and `${ARCHIVE}`.
+1. **Argument & Environment Flag Evaluation**:
+   Evaluates positional arguments (`<hostname_string>`, `<flavour_name>`, optional `[ip_address]`) and environment flags (`${DRYRUN}`, `${ARCHIVE}`, `${CLEAN}`, `${SR}`). Resolves `UUT_TARGET` to `[ip_address]` if provided, otherwise defaulting to `<hostname_string>`.
 
 2. **Flavour Parameter Mapping**:
    Maps the command-line flavour argument to its model personality:
@@ -149,8 +161,8 @@ ARCHIVE=1 ./deploy_XRM.sh acq2206_100 QPMS
      - Remotely extracts into `/mnt` and cleans up `/tmp`: `ssh root@${UUT_TARGET} "tar -xzf /tmp/${ARCHIVE_NAME} -C /mnt && rm /tmp/${ARCHIVE_NAME}"`.
      - Single SCP transfer minimizes interactive authentication prompts when SSH keys are absent.
    - **Standard Mode (Default)**:
-     - Recursively copies directories via `scp -r ${STAGE_DIR}/mnt/local root@${HOSTNAME_ARG}:/mnt/`.
-     - Recursively copies packages via `scp -r ${STAGE_DIR}/mnt/packages root@${HOSTNAME_ARG}:/mnt/` (if packages exist).
+     - Recursively copies directories via `scp -r ${STAGE_DIR}/mnt/local root@${UUT_TARGET}:/mnt/`.
+     - Recursively copies packages via `scp -r ${STAGE_DIR}/mnt/packages root@${UUT_TARGET}:/mnt/` (if packages exist).
    - **Dry-Run Mode (`DRYRUN=1`)**:
      - Staging and archive compression are performed locally, while remote SCP and SSH commands are displayed and skipped.
 

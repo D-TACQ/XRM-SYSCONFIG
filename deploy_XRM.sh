@@ -20,10 +20,10 @@ else
     CLEAN_BOX=false
 fi
 
-# 2. Check if exactly two arguments are provided
-if [ "$#" -ne 2 ]; then
+# 2. Check if arguments are provided
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
     echo "Error: Wrong number of arguments."
-    echo "Usage: [DRYRUN=1] [ARCHIVE=1] [CLEAN=1] [SR=<sample_rate>] $0 <hostname_string> <xrm_sysconfig_variant>"
+    echo "Usage: [DRYRUN=1] [ARCHIVE=1] [CLEAN=1] [SR=<sample_rate>] $0 <hostname_string> <xrm_sysconfig_variant> [ip_address]"
     echo "Allowed xrm_sysconfig_variant options:"
     echo "  - INST-A"
     echo "  - INST-B"
@@ -34,6 +34,7 @@ fi
 
 HOSTNAME_ARG="$1"       # e.g., acq2206_100
 SOURCE_SUBFOLDER="$2"   # Validated below
+IP_ARG="$3"             # Optional IP address for target UUT (defaults to HOSTNAME_ARG)
 OFFSET=500              # Always add 500
 
 # Protect against bad input for the source subfolder
@@ -126,6 +127,9 @@ echo "  ACQ400IOCnum -> $HOSTNAME_ARG"
 echo "  XRMIOCnum    -> $NEW_VAR"
 echo "  XRM_MODEL    -> $MODEL_STR"
 echo "  Sample Rate  -> $SAMPLE_RATE"
+if [ -n "$IP_ARG" ]; then
+    echo "  Target IP    -> $IP_ARG"
+fi
 
 sed -i -E "s/([a-zA-Z0-9]+_)?ACQ400IOCnum/${HOSTNAME_ARG}/g" "$TARGET_FILE"
 sed -i -E "s/([a-zA-Z0-9]+_)?XRMIOCnum/${NEW_VAR}/g" "$TARGET_FILE"
@@ -142,7 +146,7 @@ user="${USER}@$(hostname)"
 sed -i -e "2i#\n# created by deploy_XRM for uut:$uut xrm_var:$SOURCE_SUBFOLDER\n# by ${user} on $(date)\n# git $githash\n# incant $incant\n" $STAGE_DIR/mnt/local/rc.user
 
 # 9. Deploy to UUT (Omitted if DRYRUN=1)
-UUT_TARGET="${HOSTNAME_ARG}"
+UUT_TARGET="${IP_ARG:-$HOSTNAME_ARG}"
 ARCHIVE_NAME="${HOSTNAME_ARG}_payload.tgz"
 
 if [ "$CLEAN_BOX" = true ]; then
@@ -177,9 +181,9 @@ if [ "$USE_ARCHIVE" = true ]; then
         echo "   Would have run: ssh root@${UUT_TARGET} 'tar -xzf /tmp/${ARCHIVE_NAME} -C /mnt && rm /tmp/${ARCHIVE_NAME}'"
         echo "========================================="
     else
-        echo "Deploying archive to UUT (${HOSTNAME_ARG})..."
+        echo "Deploying archive to UUT (${UUT_TARGET})..."
         scp "${STAGE_DIR}/${ARCHIVE_NAME}" "root@${UUT_TARGET}:/tmp/"
-        echo "Extracting payload on UUT (${HOSTNAME_ARG})..."
+        echo "Extracting payload on UUT (${UUT_TARGET})..."
         ssh root@${UUT_TARGET} "tar -xzf /tmp/${ARCHIVE_NAME} -C /mnt && rm /tmp/${ARCHIVE_NAME}"
     fi
 else
@@ -192,10 +196,10 @@ else
         fi
         echo "========================================="
     else
-        echo "Deploying configuration to UUT (${HOSTNAME_ARG})..."
+        echo "Deploying configuration to UUT (${UUT_TARGET})..."
         scp -r "${STAGE_DIR}/mnt/local" "root@${UUT_TARGET}:/mnt/"
         if [ -d "${STAGE_DIR}/mnt/packages" ]; then
-            echo "Deploying packages to UUT (${HOSTNAME_ARG})..."
+            echo "Deploying packages to UUT (${UUT_TARGET})..."
             scp -r "${STAGE_DIR}/mnt/packages" "root@${UUT_TARGET}:/mnt/"
         fi
     fi
