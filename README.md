@@ -8,12 +8,12 @@ This document describes the XRM configuration architecture, the single-template 
 
 The `deploy_XRM.sh` utility automates staging and remote deployment of custom system configurations and EPICS IOC parameters for D-TACQ ACQ400-series systems configured for the XRM subsystem.
 
-All template files are consolidated into a single master template directory: **`XRM/XRM-BASE`**. When deploying, `deploy_XRM.sh` stages from this base and dynamically configures the requested XRM flavour.
+All template files are consolidated into a single master template directory: **`XRM-BASE`**. When deploying, `deploy_XRM.sh` stages from this base and dynamically configures the requested XRM flavour.
 
 Key responsibilities:
 - **Parameter Validation**: Validates target hostname formats and verifies the requested flavour (`INST-A`, `INST-B`, `MAGPS`, `QPMS`).
 - **Offset Calculation**: Dynamically computes secondary IOC hostname numbers using a `+500` offset (e.g., `acq2206_100` -> `acq2206_600`).
-- **Single Template Staging**: Copies from `XRM/XRM-BASE/mnt` to `XRM/XRM_STAGING` and includes packages from `XRM/packages` when present.
+- **Single Template Staging**: Copies from `XRM-BASE/mnt` to `XRM_STAGING` and includes packages from `packages` when present.
 - **Dynamic Flavour Activation**: Uncomments the appropriate `export XRM_MODEL="..."` line in `xrm_epics.sh`, updates `XRM_PM`, and configures `site-1-peers`.
 - **Variable Substitution**: Replaces template placeholders (`ACQ400IOCnum` and `XRMIOCnum`) with system-specific network names.
 - **Traceability & Audit Logging**: Prepends metadata headers to `rc.user` recording the deploying user, timestamp, Git commit SHA, and invocation incantation.
@@ -41,10 +41,23 @@ Key responsibilities:
 * `[ip_address]`: (Optional) Target UUT IP address for network deployment when DNS resolution is unavailable. When omitted, deployment defaults to `<hostname_string>`.
 
 ### Environment Variables
-* `DRYRUN=1`: When set, completes all staging, archive generation, regex substitutions, and audit logging locally in `XRM/XRM_STAGING`, but skips SSH/SCP file transfers to the UUT.
+* `DRYRUN=1`: When set, completes all staging, archive generation, regex substitutions, and audit logging locally in `XRM_STAGING`, but skips SSH/SCP file transfers to the UUT.
 * `ARCHIVE=1`: When set, packages the staged payload into `<hostname>_payload.tgz`, copies it via a single `scp` transfer to `/tmp/` on the UUT, and decompresses it into `/mnt` using `ssh`. Ideal for environments without SSH keys or for mass deployment.
 * `CLEAN=1`: When set, reaches out to the target UUT right at the start of deployment, displays a warning with a 5-second countdown, and deletes the contents of `/mnt/local` (retaining the `/cal` directory) as well as any packages containing `*xrm*` from `/mnt/packages`.
 * `SR=<sample_rate>`: (Optional) Override default sample rate for the selected flavour.
+
+### Prerequisites: Populating Packages
+The repository includes the `packages/` directory and `packages/pack_manifest`. Binary `.tgz` package archives are excluded from Git version control.
+
+Before deploying, populate the packages directory by downloading the archives specified in `pack_manifest`:
+```bash
+cd packages
+wget -i pack_manifest
+cd ..
+```
+`deploy_XRM.sh` performs pre-flight package verification:
+- **Missing Packages**: If any package listed in `pack_manifest` is missing, deployment aborts with instructions to download it.
+- **Stale Packages**: If packages downloaded during previous commits are present in `packages/` but no longer listed in `pack_manifest`, deployment aborts with instructions to remove the stale packages, preventing conflicting services from being installed on the UUT.
 
 ### Usage Examples
 
@@ -92,27 +105,31 @@ ARCHIVE=1 ./deploy_XRM.sh acq2206_100 QPMS
   +---------------+----------------+
                   |
   +---------------v----------------+
-  | 3. Hostname & Offset Math      | Parse trailing number (e.g. 100), add +500 (e.g. 600)
+  | 3. Package Verification        | Verify manifest packages exist & detect stale packages
   +---------------+----------------+
                   |
   +---------------v----------------+
-  | 4. Workspace Staging           | Clean/recreate XRM/XRM_STAGING
+  | 4. Hostname & Offset Math      | Parse trailing number (e.g. 100), add +500 (e.g. 600)
   +---------------+----------------+
                   |
   +---------------v----------------+
-  | 5. Template & Package Copy     | Copy XRM/XRM-BASE/mnt and XRM/packages to staging
+  | 5. Workspace Staging           | Clean/recreate XRM_STAGING
   +---------------+----------------+
                   |
   +---------------v----------------+
-  | 6. Flavour & Var Substitution  | Enable XRM_MODEL line, set XRM_PM, PEERS, ACQ400IOC, IOC_HOST
+  | 6. Template & Package Copy     | Copy XRM-BASE/mnt and packages/ to staging
   +---------------+----------------+
                   |
   +---------------v----------------+
-  | 7. Audit Header Generation     | Prepend Git SHA, user, timestamp, incantation to rc.user
+  | 7. Flavour & Var Substitution  | Enable XRM_MODEL line, set XRM_PM, PEERS, ACQ400IOC, IOC_HOST
   +---------------+----------------+
                   |
   +---------------v----------------+
-  | 8. Remote Deployment           | Direct scp -r or compress -> scp -> ssh tar -xzf
+  | 8. Audit Header Generation     | Prepend Git SHA, user, timestamp, incantation to rc.user
+  +---------------+----------------+
+                  |
+  +---------------v----------------+
+  | 9. Remote Deployment           | Direct scp -r or compress -> scp -> ssh tar -xzf (to UUT_TARGET)
   +--------------------------------+
 ```
 
@@ -128,23 +145,26 @@ ARCHIVE=1 ./deploy_XRM.sh acq2206_100 QPMS
    - `MAGPS`  -> `MODEL_STR="XRM-MagPS"`,  `PEERS="1"`,   `XRM_PM=1`
    - `QPMS`   -> `MODEL_STR="XRM-QPMS"`,   `PEERS="1,2,3,4"`, `XRM_PM=1`
 
-3. **Hostname Offset Calculation**:
+3. **Package Verification**:
+   Reads `packages/pack_manifest` to verify that all referenced `.tgz` archives have been downloaded into `packages/`, while also detecting any stale `.tgz` files downloaded during previous commits that are no longer in `pack_manifest`. If any package is missing or stale, displays warning banners identifying the files and aborts to prevent conflicting package installations.
+
+4. **Hostname Offset Calculation**:
    Matches `${HOSTNAME_ARG}` against `^([a-zA-Z0-9]+_)([0-9]+)$`:
    - Adds offset: `NEW_NUM=$((OLD_NUM + 500))`
    - Sets `${NEW_VAR}` (e.g., `acq2206_100` -> `acq2206_600`).
 
-4. **Staging Cleanup & Copy**:
-   - Removes any existing `XRM/XRM_STAGING` and creates a fresh staging directory.
-   - Copies `XRM/XRM-BASE/mnt` into `XRM/XRM_STAGING/`.
-   - Copies `XRM/packages` if present.
+5. **Staging Cleanup & Copy**:
+   - Removes any existing `XRM_STAGING` and creates a fresh staging directory.
+   - Copies `XRM-BASE/mnt` into `XRM_STAGING/`.
+   - Copies only validated `.tgz` packages from `pack_manifest` into `XRM_STAGING/mnt/packages/`.
 
-5. **Template Configuration (`sed`)**:
+6. **Template Configuration (`sed`)**:
    - In `xrm_epics.sh`: Replaces `ACQ400IOCnum` with `${HOSTNAME_ARG}`, `XRMIOCnum` with `${NEW_VAR}`.
    - In `xrm_epics.sh`: Uncomments and activates `export XRM_MODEL="${MODEL_STR}"`.
    - In `xrm_epics.sh`: Sets `export XRM_PM=${XRM_PM}`.
    - In `site-1-peers`: Sets `PEERS=${PEERS}`.
 
-6. **Audit Metadata Injection**:
+7. **Audit Metadata Injection**:
    Injects deployment metadata into line 2 of `$STAGE_DIR/mnt/local/rc.user`:
    ```sh
    #
@@ -154,7 +174,7 @@ ARCHIVE=1 ./deploy_XRM.sh acq2206_100 QPMS
    # incant $incant
    ```
 
-7. **UUT Transfer and Decompression**:
+8. **UUT Transfer and Decompression**:
    - **Archive Mode (`ARCHIVE=1`)**:
      - Bundles `${STAGE_DIR}/mnt` into a compressed archive: `${STAGE_DIR}/${HOSTNAME_ARG}_payload.tgz`.
      - Securely copies the single archive: `scp ${STAGE_DIR}/${ARCHIVE_NAME} root@${UUT_TARGET}:/tmp/`.
@@ -170,7 +190,7 @@ ARCHIVE=1 ./deploy_XRM.sh acq2206_100 QPMS
 
 ## 4. XRM Flavour Reference
 
-All template files are maintained under `XRM/XRM-BASE/`. The 4 supported operational flavours and their auto-configured parameters are:
+All template files are maintained under `XRM-BASE/`. The 4 supported operational flavours and their auto-configured parameters are:
 
 | Flavour Name | `XRM_MODEL` String | Sample Rate (Hz) | `PEERS` Sites | `XRM_PM` | `NCHAN` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -183,7 +203,7 @@ All template files are maintained under `XRM/XRM-BASE/`. The 4 supported operati
 
 ## 5. Core Configuration Files Reference
 
-Configuration files reside in `XRM/XRM-BASE/mnt/local/`:
+Configuration files reside in `XRM-BASE/mnt/local/`:
 
 ### `mnt/local/sysconfig/xrm_epics.sh`
 The primary environment file loaded by the EPICS startup environment. It defines:
@@ -224,9 +244,9 @@ Configure Buffer-on-System streaming and White Rabbit timing calibration.
 
 ## 6. Git Version Control Conventions
 
-- All template configurations are stored under `XRM/XRM-BASE/`.
+- All template configurations are stored under `XRM-BASE/`.
 - Binary files (`.bin`) and compressed packages (`.tgz`) are ignored by Git.
-- `XRM/XRM_STAGING` is ephemeral and cleared automatically on every deployment run.
-- Template files under `XRM/XRM-BASE/` remain clean and version-controlled.
+- `XRM_STAGING` is ephemeral and cleared automatically on every deployment run.
+- Template files under `XRM-BASE/` remain clean and version-controlled.
 
 

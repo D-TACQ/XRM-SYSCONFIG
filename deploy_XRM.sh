@@ -80,12 +80,88 @@ SAMPLE_RATE="${SR:-$DEFAULT_SR}"
 BASE_SOURCE_PATH="."
 STAGE_DIR="XRM_STAGING"
 PACKAGES_DIR="packages"
+MANIFEST_FILE="${PACKAGES_DIR}/pack_manifest"
 
 # Source template is consolidated in XRM-BASE
 SOURCE_DIR="XRM-BASE"
 TARGET_FILE="${STAGE_DIR}/mnt/local/sysconfig/xrm_epics.sh"
 
-# 4. Validate that the base template directory exists
+# 4. Validate that packages directory contains required .tgz packages and no stale packages
+EXPECTED_PACKAGES=()
+MISSING_PACKAGES=()
+STALE_PACKAGES=()
+
+if [ -f "$MANIFEST_FILE" ]; then
+    while IFS= read -r url || [ -n "$url" ]; do
+        url=$(echo "$url" | tr -d '\r' | xargs)
+        [ -z "$url" ] && continue
+        [[ "$url" =~ ^# ]] && continue
+        pkg_name=$(basename "$url")
+        EXPECTED_PACKAGES+=("$pkg_name")
+        if [ ! -f "${PACKAGES_DIR}/${pkg_name}" ]; then
+            MISSING_PACKAGES+=("$pkg_name")
+        fi
+    done < "$MANIFEST_FILE"
+
+    # Identify any .tgz in packages/ not listed in manifest (stale packages from previous commits)
+    for existing_file in "${PACKAGES_DIR}"/*.tgz; do
+        [ -e "$existing_file" ] || continue
+        pkg_base=$(basename "$existing_file")
+        is_expected=false
+        for exp in "${EXPECTED_PACKAGES[@]}"; do
+            if [ "$pkg_base" = "$exp" ]; then
+                is_expected=true
+                break
+            fi
+        done
+        if [ "$is_expected" = false ]; then
+            STALE_PACKAGES+=("$pkg_base")
+        fi
+    done
+elif [ -z "$(ls -A "$PACKAGES_DIR"/*.tgz 2>/dev/null)" ]; then
+    MISSING_PACKAGES+=("*.tgz")
+fi
+
+HAS_PKG_ERROR=false
+
+if [ "${#STALE_PACKAGES[@]}" -gt 0 ]; then
+    HAS_PKG_ERROR=true
+    echo "======================================================================"
+    echo " WARNING: Stale package(s) detected in '${PACKAGES_DIR}'!"
+    echo " The following package(s) are not in ${MANIFEST_FILE} (possibly downloaded"
+    echo " during previous commits):"
+    for pkg in "${STALE_PACKAGES[@]}"; do
+        echo "   - $pkg"
+    done
+    echo "----------------------------------------------------------------------"
+    echo " Stale packages will cause duplicate/conflicting services on the UUT."
+    echo " To clean stale packages, remove them:"
+    for pkg in "${STALE_PACKAGES[@]}"; do
+        echo "   rm \"${PACKAGES_DIR}/$pkg\""
+    done
+    echo "======================================================================"
+fi
+
+if [ "${#MISSING_PACKAGES[@]}" -gt 0 ]; then
+    HAS_PKG_ERROR=true
+    echo "======================================================================"
+    echo " WARNING: Packages directory '${PACKAGES_DIR}' is missing .tgz packages!"
+    echo " The following package(s) from pack_manifest have not been downloaded:"
+    for pkg in "${MISSING_PACKAGES[@]}"; do
+        echo "   - $pkg"
+    done
+    echo "----------------------------------------------------------------------"
+    echo " To populate the packages directory, run the following commands:"
+    echo "   cd ${PACKAGES_DIR}"
+    echo "   wget -i pack_manifest"
+    echo "======================================================================"
+fi
+
+if [ "$HAS_PKG_ERROR" = true ]; then
+    echo "Exiting due to package verification failure."
+    exit 1
+fi
+
 if [ ! -d "$SOURCE_DIR" ]; then
     echo "Error: Source directory '${SOURCE_DIR}' does not exist."
     exit 1
@@ -117,8 +193,17 @@ echo "Copying from ${SOURCE_DIR} to ${STAGE_DIR}..."
 cp -r "$SOURCE_DIR/mnt" "$STAGE_DIR"
 
 if [ -d "$PACKAGES_DIR" ]; then
-    echo "Copying packages from ${PACKAGES_DIR} to ${STAGE_DIR}/mnt/..."
-    cp -r "$PACKAGES_DIR" "${STAGE_DIR}/mnt/"
+    echo "Copying packages from ${PACKAGES_DIR} to ${STAGE_DIR}/mnt/packages/..."
+    mkdir -p "${STAGE_DIR}/mnt/packages"
+    if [ "${#EXPECTED_PACKAGES[@]}" -gt 0 ]; then
+        for pkg in "${EXPECTED_PACKAGES[@]}"; do
+            if [ -f "${PACKAGES_DIR}/${pkg}" ]; then
+                cp "${PACKAGES_DIR}/${pkg}" "${STAGE_DIR}/mnt/packages/"
+            fi
+        done
+    else
+        cp "${PACKAGES_DIR}"/*.tgz "${STAGE_DIR}/mnt/packages/" 2>/dev/null || true
+    fi
 fi
 
 # 8. Replace placeholders and configure model flavor
@@ -142,7 +227,7 @@ sed -i -E "s/%SR%/${SAMPLE_RATE}/g" "$STAGE_DIR/mnt/local/rc.user"
 incant="$0 $*"
 uut="${HOSTNAME_ARG}"
 githash=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-user="${USER}@$(hostname)"	
+user="${USER}@$(hostname)"
 sed -i -e "2i#\n# created by deploy_XRM for uut:$uut xrm_var:$SOURCE_SUBFOLDER\n# by ${user} on $(date)\n# git $githash\n# incant $incant\n" $STAGE_DIR/mnt/local/rc.user
 
 # 9. Deploy to UUT (Omitted if DRYRUN=1)
