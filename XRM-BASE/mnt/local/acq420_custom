@@ -1,0 +1,7 @@
+# Uncomment one of the DRVR_CUSTOM arguments below
+
+# PM. First 32 buffers reserved for post-mortem; only 20 actively used
+# AWG. Additional buffers can be reserved for use with AWG if you include the distributor_first_buffer parameter
+
+DRVR_CUSTOM="reserve_buffers=32 hb_copy_from_mode=1"
+#DRVR_CUSTOM="reserve_buffers=32 distributor_first_buffer=20 hb_copy_from_mode=1"
