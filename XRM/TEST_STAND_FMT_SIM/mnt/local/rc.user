@@ -1,0 +1,56 @@
+# DEFAULT init for acq423, 200000 Hz, auto soft trigger
+#
+# created by deploy_sysconfig for uut:acq2206_088 mezz:acq423
+# by dt100@eigg-fs on Wed  4 Mar 15:47:37 GMT 2026
+# git 9c5642451ef85f85303bcd7695335253dd8a23ed
+# incant ./deploy_sysconfig.sh acq2206_088 acq423 1
+
+/usr/local/CARE/acq2206\+acq42x.init
+# Local clock and soft trigger
+set.site 0 sync_role master 200000
+# Alternate front panel clock and front panel trigger
+#set.site 0 sync_role fpmaster 200000 1000000
+
+# For other combinations try 'set.site 0 sync_role help'
+
+judgement() {
+# short trace length, rapid update 50Hz possible
+set.site 1 RTM_TRANSLEN ${1:-128}
+set.site 1 RGM RTM
+set.site 1 RGM:DX ${2:-d0}
+set.site 1 RGM:SENSE rising
+}
+# see /mnt/local/sysconfig/epics.sh
+source /mnt/local/sysconfig/acq400.sh
+[ ! -z "$ACQ400_JUDGEMENT" ] && judgement $ACQ400_JUDGEMENT
+
+# CYCLE TRIGGER
+caput $(hostname):0:SIG:SRC:TRG:0 EXT
+
+
+# DIO configuration - DI Capture mode
+set.site 2 clk 1,2,1
+set.site 2 trg 1,1,1
+for sites in 2 3; do
+				     #LSB  #MSB
+	set.site $sites byte_is_output 0,0,0,0
+	set.site $sites mode 2
+done
+# Optional site of Immediate Mode Output
+#for sites in 3; do
+#				     #LSB  #MSB
+#	set.site $sites byte_is_output 1,1,1,1
+#	set.site $sites mode 1
+#done
+
+
+# AO configuration
+set.site 4 clk 1,1,1
+set.site 4 clkdiv 40
+
+# Tune WR clock phase
+set.site 11 si5326_tune_phase 1
+
+
+# enable port 4210 stream
+echo STREAM_OPTS= >> /etc/sysconfig/acq400_streamd.conf

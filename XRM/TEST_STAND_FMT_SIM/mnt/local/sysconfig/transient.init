@@ -1,0 +1,20 @@
+
+# NSAMPLES sets EPICS transient WF length
+# next line: expect condition to stay this boot
+COOKED=0 NSAMPLES=100000 NCHAN=32 TYPE=SHORT
+
+# set a default transient. expect this to change at run time
+transient PRE=2000 POST=2000 OSAM=1 DEMUX=1 SOFT_TRIGGER=1
+
+# configure soft trigger on site 1 - typical default
+set.site 1 trg=1,1,1
+set.site 0 spad1_us=1,1,1
+/usr/local/CARE/make_spad_id
+
+# set sites in aggregator set
+# Site 1 AI, Sites 2,3 DI, Enable 14 LWords of "SPAD"
+run0 1,2,3 1,14,0
+
+# configure transient channel data server at ports 53000+CH
+make-ch-server
+
