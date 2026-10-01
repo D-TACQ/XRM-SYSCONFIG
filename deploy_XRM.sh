@@ -29,6 +29,8 @@ if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
     echo "  - INST-B"
     echo "  - MAGPS"
     echo "  - QPMS"
+    echo "  - TEST_STAND_FMT_SIM"
+    echo "  - INST-B-ALLISON"
     exit 1
 fi
 
@@ -36,6 +38,9 @@ HOSTNAME_ARG="$1"       # e.g., acq2206_100
 SOURCE_SUBFOLDER="$2"   # Validated below
 IP_ARG="$3"             # Optional IP address for target UUT (defaults to HOSTNAME_ARG)
 OFFSET=500              # Always add 500
+
+STATIC_DEPLOY=false
+SOURCE_DIR="XRM-BASE"
 
 # Protect against bad input for the source subfolder
 case "$SOURCE_SUBFOLDER" in
@@ -63,6 +68,10 @@ case "$SOURCE_SUBFOLDER" in
         XRM_PM=1
         DEFAULT_SR=100000
         ;;
+    TEST_STAND_FMT_SIM|INST-B-ALLISON)
+        STATIC_DEPLOY=true
+        SOURCE_DIR="XRM/${SOURCE_SUBFOLDER}"
+        ;;
     *)
         echo "Error: Invalid flavour '$SOURCE_SUBFOLDER'."
         echo "Allowed options are:"
@@ -70,6 +79,8 @@ case "$SOURCE_SUBFOLDER" in
         echo "  - INST-B"
         echo "  - MAGPS"
         echo "  - QPMS"
+        echo "  - TEST_STAND_FMT_SIM"
+        echo "  - INST-B-ALLISON"
         exit 1
         ;;
 esac
@@ -82,8 +93,6 @@ STAGE_DIR="XRM_STAGING"
 PACKAGES_DIR="packages"
 MANIFEST_FILE="${PACKAGES_DIR}/pack_manifest"
 
-# Source template is consolidated in XRM-BASE
-SOURCE_DIR="XRM-BASE"
 TARGET_FILE="${STAGE_DIR}/mnt/local/sysconfig/xrm_epics.sh"
 
 # 4. Validate that packages directory contains required .tgz packages and no stale packages
@@ -173,19 +182,21 @@ if [ -d "$STAGE_DIR" ]; then
 fi
 mkdir -p "$STAGE_DIR"
 
-# 6. Extract the base string and the trailing number from hostname
-if [[ "$HOSTNAME_ARG" =~ ^(.*_)([0-9]+)$ ]]; then
-    BASE_STR="${BASH_REMATCH[1]}" # e.g., acq2206_
-    OLD_NUM="${BASH_REMATCH[2]}"  # e.g., 100
+# 6. Extract the base string and the trailing number from hostname (Only if templating)
+if [ "$STATIC_DEPLOY" = false ]; then
+    if [[ "$HOSTNAME_ARG" =~ ^(.*_)([0-9]+)$ ]]; then
+        BASE_STR="${BASH_REMATCH[1]}" # e.g., acq2206_
+        OLD_NUM="${BASH_REMATCH[2]}"  # e.g., 100
 
-    # Perform the calculation (e.g., 100 + 500 = 600)
-    NEW_NUM=$((OLD_NUM + OFFSET))
+        # Perform the calculation (e.g., 100 + 500 = 600)
+        NEW_NUM=$((OLD_NUM + OFFSET))
 
-    # Reassemble cleanly to get "acq2206_600"
-    NEW_VAR="${BASE_STR}${NEW_NUM}"
-else
-    echo "Error: Hostname format must end in an underscore and a number (e.g., acq2206_100)"
-    exit 1
+        # Reassemble cleanly to get "acq2206_600"
+        NEW_VAR="${BASE_STR}${NEW_NUM}"
+    else
+        echo "Error: Hostname format must end in an underscore and a number (e.g., acq2206_100)"
+        exit 1
+    fi
 fi
 
 # 7. Execute copy (Always runs)
@@ -207,28 +218,33 @@ if [ -d "$PACKAGES_DIR" ]; then
 fi
 
 # 8. Replace placeholders and configure model flavor
-echo "Configuring parameters for ${SOURCE_SUBFOLDER}..."
-echo "  ACQ400IOCnum -> $HOSTNAME_ARG"
-echo "  XRMIOCnum    -> $NEW_VAR"
-echo "  XRM_MODEL    -> $MODEL_STR"
-echo "  Sample Rate  -> $SAMPLE_RATE"
-if [ -n "$IP_ARG" ]; then
-    echo "  Target IP    -> $IP_ARG"
+if [ "$STATIC_DEPLOY" = true ]; then
+    echo "Static deployment selected for ${SOURCE_SUBFOLDER}."
+    echo "Bypassing file templating..."
+else
+    echo "Configuring parameters for ${SOURCE_SUBFOLDER}..."
+    echo "  ACQ400IOCnum -> $HOSTNAME_ARG"
+    echo "  XRMIOCnum    -> $NEW_VAR"
+    echo "  XRM_MODEL    -> $MODEL_STR"
+    echo "  Sample Rate  -> $SAMPLE_RATE"
+    if [ -n "$IP_ARG" ]; then
+        echo "  Target IP    -> $IP_ARG"
+    fi
+
+    sed -i -E "s/([a-zA-Z0-9]+_)?ACQ400IOCnum/${HOSTNAME_ARG}/g" "$TARGET_FILE"
+    sed -i -E "s/([a-zA-Z0-9]+_)?XRMIOCnum/${NEW_VAR}/g" "$TARGET_FILE"
+    sed -i -E "s/^#?export XRM_MODEL=\"${MODEL_STR}\"/export XRM_MODEL=\"${MODEL_STR}\"/g" "$TARGET_FILE"
+    sed -i -E "s/^export XRM_PM=.*/export XRM_PM=${XRM_PM}/g" "$TARGET_FILE"
+
+    sed -i -E "s/^PEERS=.*/PEERS=${PEERS}/" "$STAGE_DIR/mnt/local/sysconfig/site-1-peers"
+    sed -i -E "s/%SR%/${SAMPLE_RATE}/g" "$STAGE_DIR/mnt/local/rc.user"
+
+    incant="$0 $*"
+    uut="${HOSTNAME_ARG}"
+    githash=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    user="${USER}@$(hostname)"
+    sed -i -e "2i#\n# created by deploy_XRM for uut:$uut xrm_var:$SOURCE_SUBFOLDER\n# by ${user} on $(date)\n# git $githash\n# incant $incant\n" $STAGE_DIR/mnt/local/rc.user
 fi
-
-sed -i -E "s/([a-zA-Z0-9]+_)?ACQ400IOCnum/${HOSTNAME_ARG}/g" "$TARGET_FILE"
-sed -i -E "s/([a-zA-Z0-9]+_)?XRMIOCnum/${NEW_VAR}/g" "$TARGET_FILE"
-sed -i -E "s/^#?export XRM_MODEL=\"${MODEL_STR}\"/export XRM_MODEL=\"${MODEL_STR}\"/g" "$TARGET_FILE"
-sed -i -E "s/^export XRM_PM=.*/export XRM_PM=${XRM_PM}/g" "$TARGET_FILE"
-
-sed -i -E "s/^PEERS=.*/PEERS=${PEERS}/" "$STAGE_DIR/mnt/local/sysconfig/site-1-peers"
-sed -i -E "s/%SR%/${SAMPLE_RATE}/g" "$STAGE_DIR/mnt/local/rc.user"
-
-incant="$0 $*"
-uut="${HOSTNAME_ARG}"
-githash=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-user="${USER}@$(hostname)"
-sed -i -e "2i#\n# created by deploy_XRM for uut:$uut xrm_var:$SOURCE_SUBFOLDER\n# by ${user} on $(date)\n# git $githash\n# incant $incant\n" $STAGE_DIR/mnt/local/rc.user
 
 # 9. Deploy to UUT (Omitted if DRYRUN=1)
 UUT_TARGET="${IP_ARG:-$HOSTNAME_ARG}"
