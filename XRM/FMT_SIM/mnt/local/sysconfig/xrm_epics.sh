@@ -1,14 +1,16 @@
 #!/bin/sh
 
 echo 1>&2 xrm_epics.sh
-export IOC_HOST=acq2206_588
-export ACQ400IOC=acq2206_088
+export IOC_HOST=XRMIOCnum
+export ACQ400IOC=ACQ400IOCnum
 ETH0_IP=$(/usr/local/CARE/ip_addr_show eth0)
 ETH00_IP=$ETH0_IP:44000
 # bind server to ETH00
 export EPICS_CAS_INTF_ADDR_LIST=$ETH00_IP
 export EPICS_PVAS_INTF_ADDR_LIST=$ETH00_IP
 #export EPICS_CAS_BEACON_ADDR_LIST=192.168.1.88
+
+export MultiCastSender_multicast_ttl=64
 
 # bind client (including in-server client) to both
 
@@ -37,7 +39,7 @@ export XRM_FMT_SIM=1
 #export IN2SPY_cmd=/usr/local/xrm/epics/scripts/inst-str-fake
 #export IN2SPY_cmd=/usr/local/xrm/epics/scripts/inst-spy-fake
 
-export MultiCastVerbose=1
+export MultiCastVerbose=0
 
 # redundant
 #export acq400_SOE_Strategy=LUT_FMT1

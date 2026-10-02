@@ -29,7 +29,7 @@ if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
     echo "  - INST-B"
     echo "  - MAGPS"
     echo "  - QPMS"
-    echo "  - TEST_STAND_FMT_SIM"
+    echo "  - FMT_SIM"
     echo "  - INST-B-ALLISON"
     exit 1
 fi
@@ -68,7 +68,7 @@ case "$SOURCE_SUBFOLDER" in
         XRM_PM=1
         DEFAULT_SR=100000
         ;;
-    TEST_STAND_FMT_SIM|INST-B-ALLISON)
+    FMT_SIM|INST-B-ALLISON)
         STATIC_DEPLOY=true
         SOURCE_DIR="XRM/${SOURCE_SUBFOLDER}"
         ;;
@@ -79,7 +79,7 @@ case "$SOURCE_SUBFOLDER" in
         echo "  - INST-B"
         echo "  - MAGPS"
         echo "  - QPMS"
-        echo "  - TEST_STAND_FMT_SIM"
+        echo "  - FMT_SIM"
         echo "  - INST-B-ALLISON"
         exit 1
         ;;
@@ -183,13 +183,13 @@ fi
 mkdir -p "$STAGE_DIR"
 
 # 6. Extract the base string and the trailing number from hostname (Only if templating)
-if [ "$STATIC_DEPLOY" = false ]; then
+if [ "$STATIC_DEPLOY" = false ] || [ "$SOURCE_SUBFOLDER" = "FMT_SIM" ]; then
     if [[ "$HOSTNAME_ARG" =~ ^(.*_)([0-9]+)$ ]]; then
         BASE_STR="${BASH_REMATCH[1]}" # e.g., acq2206_
         OLD_NUM="${BASH_REMATCH[2]}"  # e.g., 100
 
         # Perform the calculation (e.g., 100 + 500 = 600)
-        NEW_NUM=$((OLD_NUM + OFFSET))
+        NEW_NUM=$((10#$OLD_NUM + OFFSET))
 
         # Reassemble cleanly to get "acq2206_600"
         NEW_VAR="${BASE_STR}${NEW_NUM}"
@@ -220,7 +220,19 @@ fi
 # 8. Replace placeholders and configure model flavor
 if [ "$STATIC_DEPLOY" = true ]; then
     echo "Static deployment selected for ${SOURCE_SUBFOLDER}."
-    echo "Bypassing file templating..."
+    if [ "$SOURCE_SUBFOLDER" = "FMT_SIM" ]; then
+        echo "Configuring hostname parameters for ${SOURCE_SUBFOLDER}..."
+        echo "  ACQ400IOCnum -> $HOSTNAME_ARG"
+        echo "  XRMIOCnum    -> $NEW_VAR"
+        if [ -n "$IP_ARG" ]; then
+            echo "  Target IP    -> $IP_ARG"
+        fi
+
+        sed -i -E "s/([a-zA-Z0-9]+_)?ACQ400IOCnum/${HOSTNAME_ARG}/g" "$TARGET_FILE"
+        sed -i -E "s/([a-zA-Z0-9]+_)?XRMIOCnum/${NEW_VAR}/g" "$TARGET_FILE"
+    else
+        echo "Bypassing file templating..."
+    fi
 else
     echo "Configuring parameters for ${SOURCE_SUBFOLDER}..."
     echo "  ACQ400IOCnum -> $HOSTNAME_ARG"
