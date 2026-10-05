@@ -265,7 +265,7 @@ ARCHIVE_NAME="${HOSTNAME_ARG}_payload.tgz"
 if [ "$CLEAN_BOX" = true ]; then
     echo "======================================================================"
     echo " WARNING: CLEAN=1 is enabled!"
-    echo " This will delete the contents of /mnt/local (retaining /cal)"
+    echo " This will delete the contents of /mnt/local (retaining /cal and /mnt/local/network)"
     echo " and remove any packages containing *xrm* from /mnt/packages on:"
     echo " Target UUT: ${UUT_TARGET}"
     echo "======================================================================"
@@ -279,7 +279,7 @@ if [ "$CLEAN_BOX" = true ]; then
         done
         echo "0"
         echo "Executing remote cleanup on ${UUT_TARGET}..."
-        ssh root@${UUT_TARGET} "find /mnt/local -mindepth 1 ! -path '/mnt/local/cal' ! -path '/mnt/local/cal/*' -exec rm -rf {} + 2>/dev/null || true; rm -f /mnt/packages/*xrm* 2>/dev/null || true"
+        ssh root@${UUT_TARGET} "find /mnt/local -mindepth 1 ! -path '/mnt/local/cal' ! -path '/mnt/local/cal/*' ! -path '/mnt/local/network' ! -path '/mnt/local/network/*' -exec rm -rf {} + 2>/dev/null || true; rm -f /mnt/packages/*xrm* 2>/dev/null || true"
     fi
 fi
 

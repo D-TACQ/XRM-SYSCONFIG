@@ -43,7 +43,7 @@ Key responsibilities:
 ### Environment Variables
 * `DRYRUN=1`: When set, completes all staging, archive generation, regex substitutions, and audit logging locally in `XRM_STAGING`, but skips SSH/SCP file transfers to the UUT.
 * `ARCHIVE=1`: When set, packages the staged payload into `<hostname>_payload.tgz`, copies it via a single `scp` transfer to `/tmp/` on the UUT, and decompresses it into `/mnt` using `ssh`. Ideal for environments without SSH keys or for mass deployment.
-* `CLEAN=1`: When set, reaches out to the target UUT right at the start of deployment, displays a warning with a 5-second countdown, and deletes the contents of `/mnt/local` (retaining the `/cal` directory) as well as any packages containing `*xrm*` from `/mnt/packages`.
+* `CLEAN=1`: When set, reaches out to the target UUT right at the start of deployment, displays a warning with a 5-second countdown, and deletes the contents of `/mnt/local` (retaining the `/cal` directory and `/mnt/local/network` file) as well as any packages containing `*xrm*` from `/mnt/packages`.
 * `SR=<sample_rate>`: (Optional) Override default sample rate for the selected flavour.
 
 ### Prerequisites: Populating Packages
